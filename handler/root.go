@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/YKMeIz/logc"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,7 +33,16 @@ func RootHandleFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// json api
 		if strings.Contains(req.Header.Get("Accept"), "application/json") || strings.HasSuffix(req.URL.Path, ".json") {
-			if b := getMetadata(strings.TrimSuffix(filepath.Base(req.URL.Path), ".json")); b != nil {
+			var norm bool
+			u, e := url.Parse(req.Header.Get("Referer"))
+			if e != nil {
+				logc.Warning("error happened when parsing HTTP request header Referer: ", req.Header.Get("Referer"), "\n", e.Error())
+			}
+			if u.Host == domain[2:] {
+				norm = true
+			}
+
+			if b := getMetadata(strings.TrimSuffix(filepath.Base(req.URL.Path), ".json"), norm); b != nil {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.Write(b)
 				return

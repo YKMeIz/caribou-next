@@ -1,13 +1,28 @@
 package handler
 
 import (
+	"github.com/YKMeIz/caribou/cache"
 	"github.com/YKMeIz/logc"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 )
 
-func PassthroughHandleFunc() http.HandlerFunc {
+func ProxyHandleFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		// handle with cache
+		if os.Getenv("CARIBOU_CACHE") == "1" {
+			cacheKey := path.Base(req.URL.Path)
+			b, e := cache.LoadBytes(cacheKey)
+			if e == nil {
+				w.Write(b)
+				return
+			}
+
+			logc.Default("cache ", cacheKey, " not found in redis")
+		}
+
 		b, e := fetch("https://i.pximg.net" + req.URL.Path)
 
 		if e != nil {
@@ -17,6 +32,15 @@ func PassthroughHandleFunc() http.HandlerFunc {
 			http.Redirect(w, req, notFound, http.StatusNotFound)
 			return
 		}
+
+		// handle with cache
+		if os.Getenv("CARIBOU_CACHE") == "1" {
+			cacheKey := path.Base(req.URL.Path)
+			if e := cache.Store(cacheKey, b, cache.StandTTL); e != nil {
+				logc.Default("cache ", cacheKey, " cannot be stored: ", e.Error())
+			}
+		}
+
 		w.Write(b)
 		return
 	}

@@ -3,38 +3,72 @@ package handler
 import (
 	"encoding/json"
 	"github.com/YKMeIz/Pill"
+	"github.com/YKMeIz/caribou/cache"
 	"github.com/YKMeIz/logc"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 )
 
-func getMetadata(id string) []byte {
+func getMetadata(id string, norm bool) []byte {
+	// handle with cache
+	if os.Getenv("CARIBOU_CACHE") == "1" {
+		cacheKey := id
+		if norm {
+			cacheKey += ":NORM"
+		}
+		b, e := cache.LoadBytes(cacheKey)
+		if e == nil {
+			return b
+		}
+
+		logc.Default("cahce ", cacheKey, " not found in redis")
+	}
+
 	i, e := pill.Pixiv(id)
 	if e != nil {
-		logc.Warning("error happened when grab pixiv illust metadata with id:", id+"\n"+e.Error())
+		logc.Warning("error happened when grab pixiv illust metadata with id: ", id, "\n", e.Error())
 		return nil
 	}
 
-	i.Author.Avatar = strings.ReplaceAll(i.Author.Avatar, "https://i.pximg.net", domain)
-	for index, v := range i.Sources {
-		i.Sources[index] = strings.ReplaceAll(v, "https://i.pximg.net", domain)
-	}
-
-	jumps := regexp.MustCompile(`href=\".+?"`).FindAllString(i.Description, -1)
-	for _, jump := range jumps {
-		oURL, e := url.PathUnescape(jump[6:])
-		if e != nil {
-			logc.Warning("error happened when parse url after /jump.php:", e.Error())
-			continue
+	if norm {
+		// Normalize URLs
+		i.Author.Avatar = strings.ReplaceAll(i.Author.Avatar, "https://i.pximg.net", domain)
+		for index, v := range i.Sources {
+			i.Sources[index] = strings.ReplaceAll(v, "https://i.pximg.net", domain)
 		}
-		i.Description = strings.ReplaceAll(i.Description, jump[6:], oURL[10:])
+
+		// Normalize URLs in description
+		jumps := regexp.MustCompile(`href=\".+?"`).FindAllString(i.Description, -1)
+		for _, jump := range jumps {
+			oURL, e := url.PathUnescape(jump[6:])
+			if e != nil {
+				logc.Warning("error happened when parse url after /jump.php: ", e.Error())
+				continue
+			}
+			i.Description = strings.ReplaceAll(i.Description, jump[6:], oURL[10:])
+		}
 	}
 
 	b, e := json.Marshal(i)
 	if e != nil {
-		logc.Warning("error happened when marshal json for metadata of id:", id+"\n"+e.Error())
+		logc.Warning("error happened when marshal json for metadata of id: ", id, "\n", e.Error())
 		return nil
+	}
+
+	// handle with cache
+	if os.Getenv("CARIBOU_CACHE") == "1" {
+		cacheKey := id
+		if norm {
+			cacheKey += ":NORM"
+		}
+		e := cache.Store(cacheKey, b, cache.StandTTL)
+		if e == nil {
+			return b
+		}
+
+		logc.Default("cahce ", cacheKey, " cannot be stored: ", e.Error())
 	}
 
 	return b
@@ -44,7 +78,7 @@ func getSourceURLByName(name string) string {
 	id := strings.Split(name, "_")[0]
 	i, e := pill.Pixiv(id)
 	if e != nil {
-		logc.Warning("error happened when grab pixiv illust metadata with id:", id+"\n"+e.Error())
+		logc.Warning("error happened when grab pixiv illust metadata with id: ", id, "\n", e.Error())
 		return ""
 	}
 
