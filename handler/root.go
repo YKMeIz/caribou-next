@@ -44,6 +44,7 @@ func RootHandleFunc() http.HandlerFunc {
 
 			if b := getMetadata(strings.TrimSuffix(filepath.Base(req.URL.Path), ".json"), norm); b != nil {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Content-Type", "application/json")
 				w.Write(b)
 				return
 			}
@@ -71,7 +72,9 @@ func RootHandleFunc() http.HandlerFunc {
 			return
 		}
 
+		// serve file
 		if _, err := os.Stat("dist" + req.URL.Path); os.IsNotExist(err) {
+			w.Header().Set("Content-Encoding", "gzip")
 			http.ServeFile(w, req, "dist/index.html")
 			return
 		}
