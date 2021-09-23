@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/YKMeIz/caribou/handler"
+	"github.com/YKMeIz/caribou-next/handler"
 	"net/http"
 )
 

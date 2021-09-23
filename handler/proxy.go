@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/YKMeIz/caribou/cache"
 	"github.com/YKMeIz/logc"
 	"io/ioutil"
 	"net/http"
@@ -14,7 +13,7 @@ func ProxyHandleFunc() http.HandlerFunc {
 		// handle with cache
 		if os.Getenv("CARIBOU_CACHE") == "1" {
 			cacheKey := path.Base(req.URL.Path)
-			b, e := cache.LoadBytes(cacheKey)
+			b, e := cache.Get([]byte(cacheKey))
 			if e == nil {
 				w.Write(b)
 				return
@@ -36,7 +35,7 @@ func ProxyHandleFunc() http.HandlerFunc {
 		// handle with cache
 		if os.Getenv("CARIBOU_CACHE") == "1" {
 			cacheKey := path.Base(req.URL.Path)
-			if e := cache.Store(cacheKey, b, cache.StandTTL); e != nil {
+			if e := cache.Put([]byte(cacheKey), b, standardTTL); e != nil {
 				logc.Default("cache ", cacheKey, " cannot be stored: ", e.Error())
 			}
 		}

@@ -2,13 +2,21 @@ package handler
 
 import (
 	"encoding/json"
+	"github.com/YKMeIz/KV"
 	"github.com/YKMeIz/Pill"
-	"github.com/YKMeIz/caribou/cache"
 	"github.com/YKMeIz/logc"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
+	"time"
+)
+
+var (
+	standardTTL = time.Duration(24 * time.Hour)
+	cache       = KV.NewNameSpace(KV.Config{
+		DiskLess: true,
+	})
 )
 
 func getMetadata(id string, norm bool) []byte {
@@ -18,7 +26,7 @@ func getMetadata(id string, norm bool) []byte {
 		if norm {
 			cacheKey += ":NORM"
 		}
-		b, e := cache.LoadBytes(cacheKey)
+		b, e := cache.Get([]byte(cacheKey))
 		if e == nil {
 			return b
 		}
@@ -63,7 +71,7 @@ func getMetadata(id string, norm bool) []byte {
 		if norm {
 			cacheKey += ":NORM"
 		}
-		e := cache.Store(cacheKey, b, cache.StandTTL)
+		e := cache.Put([]byte(cacheKey), b, standardTTL)
 		if e == nil {
 			return b
 		}
