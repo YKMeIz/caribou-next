@@ -6,7 +6,6 @@ import (
 	"github.com/YKMeIz/Pill"
 	"github.com/YKMeIz/logc"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -21,18 +20,16 @@ var (
 
 func getMetadata(id string, norm bool) []byte {
 	// handle with cache
-	if os.Getenv("CARIBOU_CACHE") == "1" {
-		cacheKey := id
-		if norm {
-			cacheKey += ":NORM"
-		}
-		b, e := cache.Get([]byte(cacheKey))
-		if e == nil {
-			return b
-		}
-
-		logc.Default("cahce ", cacheKey, " not found in redis")
+	cacheKey := id
+	if norm {
+		cacheKey += ":NORM"
 	}
+	b, e := cache.Get([]byte(cacheKey))
+	if e == nil {
+		return b
+	}
+
+	logc.Default("cahce ", cacheKey, " not found in redis")
 
 	i, e := pill.Pixiv(id)
 	if e != nil {
@@ -59,25 +56,23 @@ func getMetadata(id string, norm bool) []byte {
 		}
 	}
 
-	b, e := json.Marshal(i)
+	b, e = json.Marshal(i)
 	if e != nil {
 		logc.Warning("error happened when marshal json for metadata of id: ", id, "\n", e.Error())
 		return nil
 	}
 
 	// handle with cache
-	if os.Getenv("CARIBOU_CACHE") == "1" {
-		cacheKey := id
-		if norm {
-			cacheKey += ":NORM"
-		}
-		e := cache.Put([]byte(cacheKey), b, standardTTL)
-		if e == nil {
-			return b
-		}
-
-		logc.Default("cahce ", cacheKey, " cannot be stored: ", e.Error())
+	cacheKey = id
+	if norm {
+		cacheKey += ":NORM"
 	}
+	e = cache.Put([]byte(cacheKey), b, standardTTL)
+	if e == nil {
+		return b
+	}
+
+	logc.Default("cahce ", cacheKey, " cannot be stored: ", e.Error())
 
 	return b
 }

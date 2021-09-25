@@ -10,24 +10,12 @@ import (
 	"strings"
 )
 
-var (
-	notFound, domain string
+const (
+	//domain = "//caribou.ykmeiz.dev"
+	//notFound = "//caribou.ykmeiz.dev/404"
+	domain   = "//localhost:9090"
+	notFound = "//localhost:9090/404"
 )
-
-func init() {
-	domain = os.Getenv("CARIBOU_DOMAIN")
-	if domain == "" {
-		logc.Error("environment variable CARIBOU_DOMAIN (e.g. google.ca) is not defined")
-	}
-
-	notFound = os.Getenv("CARIBOU_NOTFOUND")
-	if domain == "" {
-		logc.Error("environment variable CARIBOU_NOTFOUND (e.g. /404) is not defined")
-	}
-
-	domain = "//" + domain
-	notFound = domain + notFound
-}
 
 func RootHandleFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -74,7 +62,6 @@ func RootHandleFunc() http.HandlerFunc {
 
 		// serve file
 		if _, err := os.Stat("dist" + req.URL.Path); os.IsNotExist(err) {
-			w.Header().Set("Content-Encoding", "gzip")
 			http.ServeFile(w, req, "dist/index.html")
 			return
 		}

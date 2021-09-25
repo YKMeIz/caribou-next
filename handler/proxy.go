@@ -4,25 +4,22 @@ import (
 	"github.com/YKMeIz/logc"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
 )
 
 func ProxyHandleFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// handle with cache
-		if os.Getenv("CARIBOU_CACHE") == "1" {
-			cacheKey := path.Base(req.URL.Path)
-			b, e := cache.Get([]byte(cacheKey))
-			if e == nil {
-				w.Write(b)
-				return
-			}
-
-			logc.Default("cache ", cacheKey, " not found in redis")
+		cacheKey := path.Base(req.URL.Path)
+		b, e := cache.Get([]byte(cacheKey))
+		if e == nil {
+			w.Write(b)
+			return
 		}
 
-		b, e := fetch("https://i.pximg.net" + req.URL.Path)
+		logc.Default("cache ", cacheKey, " not found")
+
+		b, e = fetch("https://i.pximg.net" + req.URL.Path)
 
 		if e != nil {
 			logc.Warning("error happened when pass https://i.pximg.net" + req.URL.Path + "\n" + e.Error())
@@ -33,11 +30,9 @@ func ProxyHandleFunc() http.HandlerFunc {
 		}
 
 		// handle with cache
-		if os.Getenv("CARIBOU_CACHE") == "1" {
-			cacheKey := path.Base(req.URL.Path)
-			if e := cache.Put([]byte(cacheKey), b, standardTTL); e != nil {
-				logc.Default("cache ", cacheKey, " cannot be stored: ", e.Error())
-			}
+		cacheKey = path.Base(req.URL.Path)
+		if e := cache.Put([]byte(cacheKey), b, standardTTL); e != nil {
+			logc.Default("cache ", cacheKey, " cannot be stored: ", e.Error())
 		}
 
 		w.Write(b)
